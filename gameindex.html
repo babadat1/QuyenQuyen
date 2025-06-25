@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Game Quyên & Đạt</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #eee; }
+    canvas { display: block; background: #b3ecff; }
+  </style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Cấu hình chung
+const gravity = 0.5;
+let isJumping = false;
+let frame = 0;
+let score = 0;
+let speed = 5; // ✅ Bắt đầu từ 5
+let gameOver = false;
+
+// Nhân vật Quyên
+const player = {
+  x: 50,
+  y: 300,
+  width: 60,
+  height: 90,
+  dy: 0,
+  jumpForce: -13
+};
+
+// Ảnh
+const playerImage = new Image();
+playerImage.src = 'quyen.png';
+
+const datImage = new Image();
+datImage.src = 'dat.png';
+
+// Trái tim
+const obstacles = [];
+
+function createObstacle() {
+  const obstacle = {
+    x: 740,
+    y: 60,
+    width: 30,
+    height: 30,
+    color: 'red',
+    dy: 4,
+    dx: 0,
+    onGround: false,
+    passed: false
+  };
+  obstacles.push(obstacle);
+}
+
+function update() {
+  if (gameOver) return;
+
+  // Vật lý nhân vật
+  player.dy += gravity;
+  player.y += player.dy;
+  if (player.y > 300) {
+    player.y = 300;
+    player.dy = 0;
+    isJumping = false;
+  }
+
+  // Cập nhật trái tim
+  for (let i = 0; i < obstacles.length; i++) {
+    const o = obstacles[i];
+
+    if (!o.onGround) {
+      o.y += o.dy;
+      if (o.y >= 330) {
+        o.y = 330;
+        o.onGround = true;
+        o.dx = -speed;
+      }
+    } else {
+      o.x += o.dx;
+    }
+
+    // Va chạm với Quyên
+    if (
+      player.x < o.x + o.width &&
+      player.x + player.width > o.x &&
+      player.y < o.y + o.height &&
+      player.y + player.height > o.y
+    ) {
+      gameOver = true;
+      alert("Game Over! Bạn đã né được " + score + " trái tim.");
+      location.reload();
+    }
+
+    // ✅ Tính điểm & tăng tốc độ mỗi lần né được
+    if (!o.passed && o.x + o.width < player.x) {
+      o.passed = true;
+      score++;
+      speed += 2; // ✅ tăng tốc liên tục
+    }
+  }
+
+  // Đạt ném trái tim mỗi 1 giây
+  if (frame % 180 === 0) {
+    createObstacle();
+  }
+
+  frame++;
+}
+
+function drawHeart(x, y, size, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y + size / 4);
+  ctx.bezierCurveTo(x + size / 2, y - size / 2, x + size, y + size / 3, x, y + size);
+  ctx.bezierCurveTo(x - size, y + size / 3, x - size / 2, y - size / 2, x, y + size / 4);
+  ctx.fill();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Đất
+  ctx.fillStyle = '#654321';
+  ctx.fillRect(0, 360, canvas.width, 40);
+
+  // Quyên
+  ctx.drawImage(playerImage, player.x, player.y - (player.height - 40), player.width, player.height);
+
+  // Đạt
+  ctx.drawImage(datImage, 650, 20, 150, 225);
+  ctx.fillStyle = 'black';
+  ctx.font = '16px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('Đạt', 750, 15);
+
+  // Vẽ các trái tim
+  for (let i = 0; i < obstacles.length; i++) {
+    const o = obstacles[i];
+    const cx = o.x + o.width / 2;
+    const cy = o.y + o.height / 2;
+    drawHeart(cx, cy - 5, o.width, o.color);
+  }
+
+  // Điểm số
+  ctx.fillStyle = 'black';
+  ctx.font = '20px Arial';
+  ctx.fillText('Score: ' + score, 700, 380);
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// Nhảy
+document.addEventListener('keydown', function (e) {
+  if (e.code === 'Space' && !isJumping) {
+    player.dy = player.jumpForce;
+    isJumping = true;
+  }
+});
+
+// Bắt đầu game sau khi hình tải xong
+let imagesLoaded = 0;
+[playerImage, datImage].forEach(img => {
+  img.onload = () => {
+    imagesLoaded++;
+    if (imagesLoaded === 2) gameLoop();
+  };
+});
+</script>
+</body>
+</html>
